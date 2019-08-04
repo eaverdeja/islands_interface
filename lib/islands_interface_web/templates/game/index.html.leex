@@ -1,0 +1,80 @@
+<div class="container root">
+  <div class="row">
+    <div class="column column-20">
+      <form phx-submit="new_game">
+        <label for="name">Name</label>
+        <input type="text" name="name">
+
+        <button type="submit">New game</button>
+      </form>
+    </div>
+
+    <div class="column column-80">
+      <form phx-submit="join_game">
+        <div class="row">
+          <div class="column">
+            <label for="game">Game</label>
+            <input type="text" name="game">
+          </div>
+          <div class="column">
+            <label for="name">Name</label>
+            <input type="text" name="name">
+          </div>
+        </div>
+
+        <button type="submit">Join game</button>
+      </form>
+    </div>
+  </div>
+  <div class="row">
+    <div class="column column-20">
+      <table>
+        <tr>
+          <td><strong>Games running</strong></td>
+          <td><%= @games_running %></td>
+        </tr>
+        <tr class="<%= get_visibility(@player1) %>">
+          <td><strong>Player 1</strong></td>
+          <td><%= @player1 %></td>
+        </tr>
+        <tr class="<%= get_visibility(@player2) %>">
+          <td><strong>Player 2</strong></td>
+          <td><%= @player2 %></td>
+        </tr>
+      </table>
+
+      <div
+        class="error_message <%= get_visibility(@error_message) %>"
+      >
+        <p><%= @error_message %></p>
+      </div>
+    </div>
+    <div class="column column-80">
+      <%= if @player1 && @player2 do %>
+        <div class="container">
+          <div class="row">
+            <div class="column">
+              <%= for island <- get_player_islands(@player_islands) do %>
+                <button class="button island_selector" phx-click="choose_island" phx-value="<%= island.type %>">
+                  <%= island.name %>: <%= island.state %>
+                </button>
+              <% end %>   
+            </div>
+            <div class="column column-80">
+              <div class="grid">
+                <%= for {row_idx, row} <- @board do %>
+                  <%= for {col_idx, {type, _coordinate}} <- row do %>
+                    <div class="tile sea <%= get_tile_class(type) %>"
+                      phx-click="position_island"
+                      phx-value="<%= [row_idx, col_idx] %>">
+                    </div>
+                  <% end %> 
+                <% end %> 
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
