@@ -33,6 +33,10 @@
           <td><strong>Games running</strong></td>
           <td><%= @games_running %></td>
         </tr>
+        <tr class="<%= get_visibility(@current_player) %>">
+          <td><strong>Current Player</strong></td>
+          <td><%= @current_player %></td>
+        </tr>
         <tr class="<%= get_visibility(@player1) %>">
           <td><strong>Player 1</strong></td>
           <td><%= @player1 %></td>
