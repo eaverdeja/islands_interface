@@ -30,6 +30,10 @@
     <div class="column column-20">
       <table>
         <tr>
+          <td><strong>Game state</strong></td>
+          <td><%= get_game_state(@game_state) %></td>
+        </tr>
+        <tr>
           <td><strong>Games running</strong></td>
           <td><%= @games_running %></td>
         </tr>
@@ -55,26 +59,15 @@
     </div>
     <div class="column column-80">
       <%= if @player1 && @player2 do %>
-        <div class="container">
-          <div class="row">
-            <div class="column">
-              <%= for island <- get_player_islands(@player_islands) do %>
-                <button class="button island_selector" phx-click="choose_island" phx-value="<%= island.type %>">
-                  <%= island.name %>: <%= island.state %>
-                </button>
-              <% end %>   
-            </div>
-            <div class="column column-80">
-              <%= live_render(@socket, IslandsInterfaceWeb.BoardLiveView, session: %{
-                board: @board,
-                current_island: @current_island,
-                player: @player1,
-                player_islands: @player_islands,
-                current_player: @current_player
-              }) %>
-            </div>
-          </div>
-        </div>
+        <%= live_render(@socket, IslandsInterfaceWeb.BoardLiveView, session: %{
+          game: @player1,
+          board: @board,
+          opponent_board: @opponent_board,
+          current_island: @current_island,
+          player: (if @current_player == :player1, do: @player1, else: @player2),
+          player_islands: @player_islands,
+          current_player: @current_player
+        }) %>
       <% end %>
     </div>
   </div>

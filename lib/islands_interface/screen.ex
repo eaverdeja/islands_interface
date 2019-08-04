@@ -56,17 +56,41 @@ defmodule IslandsInterface.Screen do
     |> Map.new()
   end
 
-  def position_island(player, current_player, island, row, col) do
-    case Game.position_island(via(player), current_player, island, row, col) do
+  def position_island(game, current_player, island, row, col) do
+    case Game.position_island(via(game), current_player, island, row, col) do
       {:ok, new_board} -> {:ok, update_board(new_board)}
       {:error, reason} -> {:error, reason}
     end
   end
 
+  def set_islands(game, player) do
+    case Game.set_islands(via(game), player) do
+      {:ok, new_board} -> {:ok, update_board(new_board)}
+      {:error, reason} -> {:error, reason}
+      :error -> {:error, :error}
+    end
+  end
+
+  def guess_coordinate(game, current_player, row, col) do
+    case Game.guess_coordinate(via(game), current_player, row, col) do
+      {:hit, :none, :no_win, new_board} -> {:ok, update_board(new_board, true)}
+      {:miss, :none, :no_win, _new_board} -> {:ok, :miss}
+      :error -> {:error, :error}
+    end
+  end
+
+  def forest_tile(board, row, col) do
+    put_in(board[row][col], {:forest, Coordinate.new(row, col)})
+  end
+
   defp via(game), do: Game.via_tuple(game)
 
-  defp update_board(new_board) do
-    Enum.reduce(new_board, init_board(), &update_coordinates(&1, &2))
+  defp update_board(new_board, opponent_board \\ false) do
+    unless(opponent_board) do
+      Enum.reduce(new_board, init_board(), &update_coordinates(&1, &2))
+    else
+      Enum.reduce(new_board, init_board(), &update_opponent_coordinates(&1, &2))
+    end
   end
 
   defp update_coordinates(
@@ -75,6 +99,14 @@ defmodule IslandsInterface.Screen do
        ) do
     board
     |> do_coordinate_update(coordinates)
+    |> do_coordinate_update(hit_coordinates)
+  end
+
+  defp update_opponent_coordinates(
+         {_island, %{hit_coordinates: hit_coordinates}},
+         board
+       ) do
+    board
     |> do_coordinate_update(hit_coordinates)
   end
 

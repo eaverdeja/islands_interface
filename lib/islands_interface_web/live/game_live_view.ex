@@ -3,6 +3,10 @@ defmodule IslandsInterfaceWeb.GameLiveView do
 
   alias IslandsEngine.GameSupervisor
   alias IslandsInterface.Screen
+  alias IslandsInterfaceWeb.Presence
+  alias Phoenix.Socket.Broadcast
+
+  import IslandsInterfaceWeb.LiveErrorHelper, only: [assign_error_message: 2]
 
   @initial_state %{
     games_running: 0,
@@ -12,7 +16,10 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     player_islands: %{},
     current_island: nil,
     board: %{},
-    error_message: nil
+    opponent_board: %{},
+    error_message: nil,
+    current_player: nil,
+    game_state: nil
   }
 
   def render(assigns) do
@@ -23,18 +30,10 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     {:ok, _} = :timer.send_interval(1000, self(), :count_games)
 
     socket =
-      case :ets.lookup(:interface_state, :state) do
-        [] ->
-          assign(socket, @initial_state)
-          |> assign(:player_islands, Screen.init_player_islands())
-          |> assign(:board, Screen.init_board())
-
-        [state: state] ->
-          state
-          |> Enum.reduce(socket, fn {key, value}, socket ->
-            assign(socket, key, value)
-          end)
-      end
+      assign(socket, @initial_state)
+      |> assign(:player_islands, Screen.init_player_islands())
+      |> assign(:board, Screen.init_board())
+      |> assign(:opponent_board, Screen.init_board())
 
     {:ok, socket}
   end
@@ -48,108 +47,173 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     {:noreply, assign(socket, :error_message, nil)}
   end
 
-  def handle_info({:new_player, %{"game" => _, "new_player" => new_player}}, socket) do
-    {:noreply, assign(socket, :player2, new_player)}
-  end
+  def handle_info({:after_join, game, screen_name}, socket) do
+    {:ok, _} =
+      Presence.track(self(), get_topic(game), screen_name, %{
+        online_at: inspect(System.system_time(:second))
+      })
 
-  def handle_event("new_game", %{"name" => name}, socket) do
-    case GameSupervisor.start_game(name) do
-      {:ok, _pid} ->
-        subscribe_to_game(name)
-        socket = assign(socket, :player1, name)
-        :ets.insert(:interface_state, {:state, socket.assigns})
-
-        {:noreply, socket}
-
-      {:error, {:already_started, _pid}} ->
-        {:noreply, assign_error_message(socket, :already_started)}
-    end
-  end
-
-  def handle_event("join_game", %{"game" => game, "name" => name}, socket) do
-    game
-    |> Screen.add_player(name)
-    |> case do
-      :ok ->
-        subscribe_to_game(name)
-        broadcast_join(game, name)
-
-        {:noreply, socket}
-
-      :error ->
-        {:noreply, assign_error_message(socket, :no_game)}
-    end
-  end
-
-  def handle_event("choose_island", island, socket) do
-    chosen_island = String.to_existing_atom(island)
-
-    player_islands = socket.assigns.player_islands
-    player_islands = Screen.choose_island(player_islands, chosen_island)
-
-    socket =
-      socket
-      |> assign(:player_islands, player_islands)
-      |> assign(:current_island, chosen_island)
+    state_key = build_state_key(screen_name)
+    :ets.insert(:interface_state, {state_key, socket.assigns})
 
     {:noreply, socket}
   end
 
-  def handle_event("position_island", <<row, col>>, socket) do
-    island = socket.assigns.current_island
-    player = socket.assigns.player1
+  def handle_info(%Broadcast{event: "presence_diff"}, socket) do
+    {:noreply, fetch(socket)}
+  end
+
+  def handle_info({:new_player, %{"game" => game, "new_player" => new_player}}, socket) do
+    broadcast_handshake(game)
 
     socket =
-      case Screen.position_island(player, island, row, col) do
-        {:ok, new_board} ->
-          player_islands =
-            socket.assigns.player_islands
-            |> put_in([island, :state], :positioned)
+      socket
+      |> assign(:player2, new_player)
+      |> assign(:game_state, :setting_islands)
 
-          socket
-          |> assign(:player_islands, player_islands)
-          |> assign(:board, new_board)
+    {:noreply, socket}
+  end
 
-        {:error, reason} ->
-          assign_error_message(socket, reason)
+  def handle_info({:handshake, %{"game" => game}}, socket) do
+    {:noreply, assign(socket, :player1, game)}
+  end
+
+  def handle_info({:update_child_assigns, assigns}, socket) do
+    socket =
+      Enum.reduce(assigns, socket, fn {key, value}, socket ->
+        assign(socket, key, value)
+      end)
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:set_islands, %{"player" => player}}, socket) do
+    game_state =
+      case socket.assigns.game_state do
+        :setting_islands -> :"#{player}_set"
+        _ -> :game_on
       end
-      |> assign(:current_island, island)
+
+    {:noreply, assign(socket, :game_state, game_state)}
+  end
+
+  def handle_info({:guessed_coordinates, %{"row" => row, "col" => col}}, socket) do
+    board = Screen.forest_tile(socket.assigns.board, row, col)
+
+    {:noreply, assign(socket, :board, board)}
+  end
+
+  def handle_event("new_game", %{"name" => name}, socket) do
+    state_key = build_state_key(name)
+
+    socket =
+      with [] <- :ets.lookup(:interface_state, state_key),
+           {:ok, _pid} <- GameSupervisor.start_game(name) do
+        subscribe_to_game(name)
+
+        socket =
+          socket
+          |> assign(:player1, name)
+          |> assign(:current_player, :player1)
+          |> assign(:game_state, :pending)
+
+        socket
+      else
+        {:error, {:already_started, _pid}} ->
+          assign_error_message(socket, :already_started)
+
+        [{^state_key, state}] ->
+          subscribe_to_game(name)
+          assign_state(socket, state)
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("join_game", %{"game" => game, "name" => name}, socket) do
+    state_key = build_state_key(name)
+
+    socket =
+      with [] <- :ets.lookup(:interface_state, state_key),
+           :ok <- Screen.add_player(game, name) do
+        subscribe_to_game(game, name)
+        broadcast_join(game, name)
+
+        assign(socket, :current_player, :player2)
+      else
+        :error ->
+          assign_error_message(socket, :no_game)
+
+        [{^state_key, state}] ->
+          subscribe_to_game(game, name)
+          assign_state(socket, state)
+      end
 
     {:noreply, socket}
   end
 
   def terminate(reason, socket) do
     IO.inspect(reason, label: "BOOM")
-    :ets.insert(:interface_state, {:state, socket.assigns})
+    current_player = socket.assigns.current_player
+
+    if current_player do
+      state_key =
+        case current_player do
+          :player1 -> socket.assigns.player1
+          :player2 -> socket.assigns.player2
+        end
+        |> build_state_key()
+
+      :ets.insert(:interface_state, {state_key, socket.assigns})
+    end
   end
 
-  defp subscribe_to_game(game) do
-    :ok = Phoenix.PubSub.subscribe(IslandsInterface.PubSub, "game:" <> game)
+  defp assign_state(socket, state) do
+    IO.inspect(state, label: "Reassigning state")
+
+    state
+    |> Enum.reduce(socket, fn {key, value}, socket ->
+      assign(socket, key, value)
+    end)
+  end
+
+  defp fetch(socket) do
+    game = socket.assigns.player1
+
+    if game do
+      assign(socket, %{
+        online_users: Presence.list(get_topic(game))
+      })
+    end
+  end
+
+  defp get_topic(name), do: "game:" <> name
+
+  defp subscribe_to_game(game), do: subscribe_to_game(game, game)
+
+  defp subscribe_to_game(game, screen_name) do
+    :ok = Phoenix.PubSub.subscribe(IslandsInterface.PubSub, get_topic(game))
+    send(self(), {:after_join, game, screen_name})
   end
 
   defp broadcast_join(game, new_player) do
     Phoenix.PubSub.broadcast!(
       IslandsInterface.PubSub,
-      "game:" <> game,
+      get_topic(game),
       {:new_player, %{"game" => game, "new_player" => new_player}}
     )
   end
 
-  defp assign_error_message(socket, reason) do
-    message = get_error_message(reason)
-    {:ok, _} = :timer.send_after(@error_message_timeout, :clean_error_message)
-
-    assign(socket, :error_message, message)
+  defp broadcast_handshake(game) do
+    Phoenix.PubSub.broadcast_from!(
+      IslandsInterface.PubSub,
+      self(),
+      get_topic(game),
+      {:handshake, %{"game" => game}}
+    )
   end
 
-  defp get_error_message(reason) do
-    case Map.has_key?(@error_messages, reason) do
-      true ->
-        @error_messages[reason]
-
-      false ->
-        IO.inspect(reason, label: "Unknown error")
-        "Unknown error"
-    end
+  defp build_state_key(screen_name) do
+    :"#{screen_name}_state"
   end
 end

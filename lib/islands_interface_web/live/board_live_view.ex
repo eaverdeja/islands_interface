@@ -14,23 +14,36 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
 
   def mount(session, socket) do
     socket =
-      socket
-      |> assign(:board, session.board)
-      |> assign(:current_island, session.current_island)
-      |> assign(:player, session.player)
-      |> assign(:player_islands, session.player_islands)
-      |> assign(:current_player, session.current_player)
+      Enum.reduce(session, socket, fn {key, value}, socket ->
+        assign(socket, key, value)
+      end)
 
     {:ok, socket}
   end
 
-  def handle_event("position_island", <<row, col>>, socket) do
-    island = socket.assigns.current_island
-    player = socket.assigns.player
-    current_player = socket.assigns.current_player
+  def handle_event("choose_island", island, socket) do
+    chosen_island = String.to_existing_atom(island)
+
+    player_islands = socket.assigns.player_islands
+    player_islands = Screen.choose_island(player_islands, chosen_island)
 
     socket =
-      case Screen.position_island(player, current_player, island, row, col) do
+      socket
+      |> assign(:player_islands, player_islands)
+      |> assign(:current_island, chosen_island)
+
+    update_child_assigns(socket)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("position_island", <<row, col>>, socket) do
+    game = socket.assigns.game
+    current_player = socket.assigns.current_player
+    island = socket.assigns.current_island
+
+    socket =
+      case Screen.position_island(game, current_player, island, row, col) do
         {:ok, new_board} ->
           player_islands =
             socket.assigns.player_islands
@@ -45,19 +58,71 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
       end
       |> assign(:current_island, nil)
 
-    send(socket.parent_pid, {:update_child_assigns, socket.assigns})
+    update_child_assigns(socket)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("set_islands", _, socket) do
+    game = socket.assigns.game
+    player = socket.assigns.current_player
+
+    socket =
+      case Screen.set_islands(game, player) do
+        {:ok, new_board} ->
+          broadcast_set_islands(game, player)
+
+          assign(socket, :board, new_board)
+
+        {:error, reason} ->
+          assign_error_message(socket.parent_pid, socket, reason)
+      end
+
+    update_child_assigns(socket)
 
     {:noreply, socket}
   end
 
   def handle_event("guess_coordinate", <<row, col>>, socket) do
-    player = socket.assigns.player
+    game = socket.assigns.game
     current_player = socket.assigns.current_player
 
-    res = Screen.guess_coordinate(player, current_player, row, col)
+    socket =
+      case Screen.guess_coordinate(game, current_player, row, col) do
+        {:ok, :miss} ->
+          socket
 
-    IO.inspect(res)
+        {:ok, opponent_board} ->
+          broadcast_guessed_coordinates(game, row, col)
+
+          assign(socket, :opponent_board, opponent_board)
+
+        {:error, reason} ->
+          assign_error_message(socket.parent_pid, socket, reason)
+      end
+
+    update_child_assigns(socket)
 
     {:noreply, socket}
+  end
+
+  defp update_child_assigns(socket) do
+    send(socket.parent_pid, {:update_child_assigns, socket.assigns})
+  end
+
+  defp broadcast_set_islands(game, player) do
+    Phoenix.PubSub.broadcast!(
+      IslandsInterface.PubSub,
+      "game:" <> game,
+      {:set_islands, %{"player" => player}}
+    )
+  end
+
+  defp broadcast_guessed_coordinates(game, row, col) do
+    Phoenix.PubSub.broadcast!(
+      IslandsInterface.PubSub,
+      "game:" <> game,
+      {:guessed_coordinates, %{"row" => row, "col" => col}}
+    )
   end
 end

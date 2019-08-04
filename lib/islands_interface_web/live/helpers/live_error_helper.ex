@@ -6,6 +6,7 @@ defmodule IslandsInterfaceWeb.LiveErrorHelper do
     no_game: "There is no game with this name!",
     overlapping_island: "Overlapping islands!",
     invalid_coordinate: "Invalid coordinates!",
+    not_all_islands_positioned: "Position all islands before setting!",
     error: "Invalid move!"
   }
 
