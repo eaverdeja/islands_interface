@@ -15,16 +15,6 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     error_message: nil
   }
 
-  @error_messages %{
-    already_started: "Game already started! Choose a different name...",
-    no_game: "There is no game with this name!",
-    overlapping_island: "Overlapping islands!",
-    invalid_coordinate: "Invalid coordinates!",
-    error: "Invalid move!"
-  }
-
-  @error_message_timeout 4000
-
   def render(assigns) do
     Phoenix.View.render(IslandsInterfaceWeb.GameView, "index.html", assigns)
   end
