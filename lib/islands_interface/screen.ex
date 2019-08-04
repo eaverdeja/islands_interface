@@ -56,8 +56,8 @@ defmodule IslandsInterface.Screen do
     |> Map.new()
   end
 
-  def position_island(player, island, row, col) do
-    case Game.position_island(via(player), :player1, island, row, col) do
+  def position_island(player, current_player, island, row, col) do
+    case Game.position_island(via(player), current_player, island, row, col) do
       {:ok, new_board} -> {:ok, update_board(new_board)}
       {:error, reason} -> {:error, reason}
     end
