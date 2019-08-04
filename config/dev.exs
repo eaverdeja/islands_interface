@@ -52,7 +52,8 @@ config :islands_interface, IslandsInterfaceWeb.Endpoint,
       ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
       ~r"lib/islands_interface_web/{live,views}/.*(ex)$",
-      ~r"lib/islands_interface_web/templates/.*(eex)$"
+      ~r"lib/islands_interface_web/templates/.*(eex)$",
+      ~r"lib/islands_interface_web/live/.*(eex)$"
     ]
   ]
 

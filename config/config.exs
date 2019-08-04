@@ -12,7 +12,10 @@ config :islands_interface, IslandsInterfaceWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "4rZzldcJAqd8SjITOtL1xVhnx30kxHz7+x8jq//0ti+ruuVLiJglqiirWWD0xwcc",
   render_errors: [view: IslandsInterfaceWeb.ErrorView, accepts: ~w(html json)],
-  pubsub: [name: IslandsInterface.PubSub, adapter: Phoenix.PubSub.PG2]
+  pubsub: [name: IslandsInterface.PubSub, adapter: Phoenix.PubSub.PG2],
+  live_view: [
+    signing_salt: "RXso7qu0jOru9KIp17ipXnHiBYeF6+Wu"
+  ]
 
 # Configures Elixir's Logger
 config :logger, :console,
