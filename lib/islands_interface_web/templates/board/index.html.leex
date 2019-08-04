@@ -1,0 +1,10 @@
+<div class="grid">
+  <%= for {row_idx, row} <- @board do %>
+    <%= for {col_idx, {type, _coordinate}} <- row do %>
+      <div class="tile sea <%= get_tile_class(type) %>"
+        phx-click="<%= get_tile_event(@current_island) %>"
+        phx-value="<%= [row_idx, col_idx] %>">
+      </div>
+    <% end %> 
+  <% end %> 
+</div>

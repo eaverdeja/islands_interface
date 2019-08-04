@@ -61,16 +61,13 @@
               <% end %>   
             </div>
             <div class="column column-80">
-              <div class="grid">
-                <%= for {row_idx, row} <- @board do %>
-                  <%= for {col_idx, {type, _coordinate}} <- row do %>
-                    <div class="tile sea <%= get_tile_class(type) %>"
-                      phx-click="position_island"
-                      phx-value="<%= [row_idx, col_idx] %>">
-                    </div>
-                  <% end %> 
-                <% end %> 
-              </div>
+              <%= live_render(@socket, IslandsInterfaceWeb.BoardLiveView, session: %{
+                board: @board,
+                current_island: @current_island,
+                player: @player1,
+                player_islands: @player_islands,
+                current_player: @current_player
+              }) %>
             </div>
           </div>
         </div>
