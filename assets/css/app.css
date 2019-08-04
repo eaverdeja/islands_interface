@@ -1,3 +1,67 @@
 /* This file is for your main application css. */
 
 @import "./phoenix.css";
+
+.root {
+  margin-top: 5rem;
+}
+
+.grid {
+  max-width: 45rem;
+}
+
+.tile {
+  float:left;
+  width: 9%;
+  padding-bottom: 9%; /* = width for a 1:1 aspect ratio */
+  margin: .3%;
+  border-radius: .2rem;
+}
+
+.sea {
+  background-color: #0378A6;  
+}
+
+.island {
+  background-color: #ffcc93;
+}
+
+.forest {
+  background-color: #667302;
+}
+
+.island_selector {
+  min-width: 25rem;
+}
+
+.error_message {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-content: center;
+  text-align: center;
+  border: 1px solid darksalmon;
+  border-radius: .4rem;
+  background-color: salmon;
+  color: snow;
+  font-weight: bold;
+  padding: .6rem;
+  margin-bottom: .5rem;
+  min-height: 8rem;
+}
+
+.show {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.hide {
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s 2s, opacity 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.error_message p {
+  margin: 0;
+}
