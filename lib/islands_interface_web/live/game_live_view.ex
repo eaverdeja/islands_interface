@@ -19,7 +19,8 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     opponent_board: %{},
     error_message: nil,
     current_player: nil,
-    game_state: nil
+    game_state: nil,
+    game_log: nil
   }
 
   def render(assigns) do
@@ -27,7 +28,7 @@ defmodule IslandsInterfaceWeb.GameLiveView do
   end
 
   def mount(_session, socket) do
-    {:ok, _} = :timer.send_interval(1000, self(), :count_games)
+    {:ok, _} = :timer.send_interval(3000, self(), :count_games)
 
     socket =
       assign(socket, @initial_state)
@@ -40,7 +41,21 @@ defmodule IslandsInterfaceWeb.GameLiveView do
 
   def handle_info(:count_games, socket) do
     games_running = Enum.count(GameSupervisor.children())
-    {:noreply, assign(socket, :games_running, games_running)}
+
+    game_log =
+      if games_running > 0 && socket.assigns.player1 do
+        IslandsEngine.Game.via_tuple(socket.assigns.player1)
+        |> :sys.get_state()
+        |> inspect(pretty: true)
+      else
+        "..."
+      end
+
+    socket =
+      assign(socket, :games_running, games_running)
+      |> assign(:game_log, game_log)
+
+    {:noreply, socket}
   end
 
   def handle_info(:clean_error_message, socket) do

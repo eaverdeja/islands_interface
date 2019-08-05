@@ -1,5 +1,7 @@
 <div class="container root">
-  <div class="row">
+  <div
+    class="row <%= get_visibility(@game_state == nil) %>"
+  >
     <div class="column column-20">
       <form phx-submit="new_game">
         <label for="name">Name</label>
@@ -26,8 +28,9 @@
       </form>
     </div>
   </div>
-  <div class="row">
+  <div class="row <%= get_visibility(@game_state != nil) %>">
     <div class="column column-20">
+      <h2>Info</h2>
       <table>
         <tr>
           <td><strong>Game state</strong></td>
@@ -69,6 +72,13 @@
           current_player: @current_player
         }) %>
       <% end %>
+    </div>
+  </div>
+  <div class="row">
+    <div class="column">
+      <pre>
+        <code><%= @game_log %></code>
+      </pre>
     </div>
   </div>
 </div>
