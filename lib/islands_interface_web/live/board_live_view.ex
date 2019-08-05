@@ -72,7 +72,16 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
         {:ok, new_board} ->
           broadcast_set_islands(game, player)
 
-          assign(socket, :board, new_board)
+          player_islands = socket.assigns.player_islands
+
+          player_islands =
+            Enum.reduce(player_islands, %{}, fn {type, info}, player_islands ->
+              Map.put_new(player_islands, type, put_in(info.state, :set))
+            end)
+
+          socket
+          |> assign(:board, new_board)
+          |> assign(:player_islands, player_islands)
 
         {:error, reason} ->
           assign_error_message(socket.parent_pid, socket, reason)
@@ -92,7 +101,12 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
         {:ok, :miss} ->
           socket
 
-        {:ok, opponent_board} ->
+        {:ok, opponent_board, :win} ->
+          broadcast_guessed_coordinates(game, row, col)
+
+          assign(socket, :opponent_board, opponent_board)
+
+        {:ok, opponent_board, _forested} ->
           broadcast_guessed_coordinates(game, row, col)
 
           assign(socket, :opponent_board, opponent_board)

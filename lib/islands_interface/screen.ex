@@ -60,6 +60,7 @@ defmodule IslandsInterface.Screen do
     case Game.position_island(via(game), current_player, island, row, col) do
       {:ok, new_board} -> {:ok, update_board(new_board)}
       {:error, reason} -> {:error, reason}
+      :error -> {:error, :error}
     end
   end
 
@@ -73,12 +74,14 @@ defmodule IslandsInterface.Screen do
 
   def guess_coordinate(game, current_player, row, col) do
     case Game.guess_coordinate(via(game), current_player, row, col) do
-      {:hit, :none, :no_win, new_board} -> {:ok, update_board(new_board, true)}
       {:miss, :none, :no_win, _new_board} -> {:ok, :miss}
+      {:hit, forested, :no_win, new_board} -> {:ok, update_board(new_board, true), forested}
+      {:hit, _forested, :win, new_board} -> {:ok, update_board(new_board, true), :win}
       :error -> {:error, :error}
     end
   end
 
+  @spec forest_tile(keyword | map, any, any) :: keyword | map
   def forest_tile(board, row, col) do
     put_in(board[row][col], {:forest, Coordinate.new(row, col)})
   end

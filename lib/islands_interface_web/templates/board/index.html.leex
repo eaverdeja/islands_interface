@@ -2,17 +2,26 @@
 <div class="container">
   <div class="row">
     <div class="column">
+      <h2>Controls</h2>
       <%= for island <- get_player_islands(@player_islands) do %>
-        <button class="button island_selector" phx-click="choose_island" phx-value="<%= island.type %>">
+        <button
+          class="button island_selector"
+          phx-click="choose_island"
+          phx-value="<%= island.type %>"
+          <%= if island.state == :set, do: "disabled", else: "" %>
+        >
           <%= island.name %>: <%= island.state %>
         </button>
-      <% end %>  
-      <button class="button set_islands" phx-click="set_islands">
-        Set Islands
-      </button> 
+      <% end %>
+      <%= if all_islands_positioned?(@player_islands) do %>
+        <button class="button set_islands" phx-click="set_islands">
+          Set Islands
+        </button> 
+      <% end %>
     </div>
     <div class="column column-40">
       <div class="grid">
+        <h2>Board</h2>
         <%= for {row_idx, row} <- @board do %>
           <%= for {col_idx, {type, _coordinate}} <- row do %>
             <div class="tile <%= get_tile_class(type) %>"
@@ -25,6 +34,7 @@
     </div>
     <div class="column column-40">
       <div class="grid">
+        <h2>Opponent Board</h2>
         <%= for {row_idx, row} <- @opponent_board do %>
           <%= for {col_idx, {type, _coordinate}} <- row do %>
             <div class="tile <%= get_tile_class(type) %>"

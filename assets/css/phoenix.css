@@ -23,9 +23,6 @@ h6{font-size: 1.4rem; letter-spacing: 0; line-height: 1.2}
   position: relative;
   width: 100%
 }
-select {
-  width: auto;
-}
 
 /* Alerts and form errors */
 .alert {
