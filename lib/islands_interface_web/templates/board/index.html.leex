@@ -24,10 +24,14 @@
         <h2>Board</h2>
         <%= for {row_idx, row} <- @board do %>
           <%= for {col_idx, {type, _coordinate}} <- row do %>
-            <div class="tile <%= get_tile_class(type) %>"
-              phx-click="<%= get_tile_event(@current_island) %>"
+            <%= if(@current_island) do %>
+              <div class="tile tile-action <%= get_tile_class(type) %>"
+                phx-click="position_island"
               phx-value="<%= [row_idx, col_idx] %>">
             </div>
+            <% else %> 
+              <div class="tile <%= get_tile_class(type) %>"></div>
+            <% end %>
           <% end %> 
         <% end %> 
       </div>
@@ -37,8 +41,8 @@
         <h2>Opponent Board</h2>
         <%= for {row_idx, row} <- @opponent_board do %>
           <%= for {col_idx, {type, _coordinate}} <- row do %>
-            <div class="tile <%= get_tile_class(type) %>"
-              phx-click="<%= get_tile_event(@current_island) %>"
+            <div class="tile tile-action <%= get_tile_class(type) %>"
+              phx-click="guess_coordinate"
               phx-value="<%= [row_idx, col_idx] %>">
             </div>
           <% end %> 

@@ -18,6 +18,11 @@
   border-radius: .2rem;
 }
 
+.tile-action:hover {
+  filter: brightness(70%);
+  cursor: pointer;
+}
+
 .sea {
   background-color: #0378A6;  
 }
@@ -28,6 +33,10 @@
 
 .forest {
   background-color: #667302;
+}
+
+.miss {
+  background-color: #d6e8ec;
 }
 
 .island_selector {
