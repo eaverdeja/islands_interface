@@ -113,9 +113,9 @@ defmodule IslandsInterfaceWeb.GameLiveView do
   end
 
   def handle_info({:guessed_coordinates, %{"row" => row, "col" => col}}, socket) do
-    board = Screen.forest_tile(socket.assigns.board, row, col)
+    socket = update(socket, :board, &Screen.change_tile(&1, row, col, :forest))
 
-    {:noreply, assign(socket, :board, board)}
+    {:noreply, socket}
   end
 
   def handle_event("new_game", %{"name" => name}, socket) do
@@ -184,10 +184,7 @@ defmodule IslandsInterfaceWeb.GameLiveView do
   end
 
   defp assign_state(socket, state) do
-    IO.inspect(state, label: "Reassigning state")
-
-    state
-    |> Enum.reduce(socket, fn {key, value}, socket ->
+    Enum.reduce(state, socket, fn {key, value}, socket ->
       assign(socket, key, value)
     end)
   end

@@ -95,21 +95,22 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
   def handle_event("guess_coordinate", <<row, col>>, socket) do
     game = socket.assigns.game
     current_player = socket.assigns.current_player
+    opponent_board = socket.assigns.opponent_board
 
     socket =
       case Screen.guess_coordinate(game, current_player, row, col) do
         {:ok, :miss} ->
-          socket
+          assign(socket, :opponent_board, Screen.change_tile(opponent_board, row, col, :miss))
 
-        {:ok, opponent_board, :win} ->
-          broadcast_guessed_coordinates(game, row, col)
+        {:ok, :hit, :win} ->
+          broadcast_guessed_coordinates(socket.parent_pid, game, row, col)
 
-          assign(socket, :opponent_board, opponent_board)
+          assign(socket, :opponent_board, Screen.change_tile(opponent_board, row, col, :forest))
 
-        {:ok, opponent_board, _forested} ->
-          broadcast_guessed_coordinates(game, row, col)
+        {:ok, :hit, _forested} ->
+          broadcast_guessed_coordinates(socket.parent_pid, game, row, col)
 
-          assign(socket, :opponent_board, opponent_board)
+          assign(socket, :opponent_board, Screen.change_tile(opponent_board, row, col, :forest))
 
         {:error, reason} ->
           assign_error_message(socket.parent_pid, socket, reason)
@@ -132,9 +133,10 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
     )
   end
 
-  defp broadcast_guessed_coordinates(game, row, col) do
-    Phoenix.PubSub.broadcast!(
+  defp broadcast_guessed_coordinates(pid, game, row, col) do
+    Phoenix.PubSub.broadcast_from!(
       IslandsInterface.PubSub,
+      pid,
       "game:" <> game,
       {:guessed_coordinates, %{"row" => row, "col" => col}}
     )
