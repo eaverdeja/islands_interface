@@ -32,9 +32,7 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
       |> assign(:player_islands, player_islands)
       |> assign(:current_island, chosen_island)
 
-    update_child_assigns(socket)
-
-    {:noreply, socket}
+    ok_reply(socket)
   end
 
   def handle_event("position_island", <<row, col>>, socket) do
@@ -43,24 +41,48 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
     island = socket.assigns.current_island
 
     socket =
-      case Screen.position_island(game, current_player, island, row, col) do
-        {:ok, new_board} ->
-          player_islands =
-            socket.assigns.player_islands
-            |> put_in([island, :state], :positioned)
+      with {:ok, new_board} <- Screen.position_island(game, current_player, island, row, col) do
+        player_islands =
+          socket.assigns.player_islands
+          |> put_in([island, :state], :positioned)
 
-          socket
-          |> assign(:player_islands, player_islands)
-          |> assign(:board, new_board)
-
+        socket
+        |> assign(:player_islands, player_islands)
+        |> assign(:board, new_board)
+      else
         {:error, reason} ->
           assign_error_message(socket.parent_pid, socket, reason)
       end
       |> assign(:current_island, nil)
 
-    update_child_assigns(socket)
+    ok_reply(socket)
+  end
 
-    {:noreply, socket}
+  def handle_event("debug_position_islands", "", socket) do
+    game = socket.assigns.game
+    current_player = socket.assigns.current_player
+
+    socket =
+      IslandsEngine.Island.types()
+      |> Enum.zip([{1, 1}, {5, 1}, {7, 3}, {3, 5}, {8, 8}])
+      |> Enum.reduce(socket, fn {island, {row, col}}, socket ->
+        case Screen.position_island(game, current_player, island, row, col) do
+          {:ok, new_board} ->
+            player_islands =
+              socket.assigns.player_islands
+              |> put_in([island, :state], :positioned)
+
+            socket
+            |> assign(:player_islands, player_islands)
+            |> assign(:board, new_board)
+
+          {:error, reason} ->
+            assign_error_message(socket.parent_pid, socket, reason)
+        end
+      end)
+      |> assign(:current_island, nil)
+
+    ok_reply(socket)
   end
 
   def handle_event("set_islands", _, socket) do
@@ -87,9 +109,7 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
           assign_error_message(socket.parent_pid, socket, reason)
       end
 
-    update_child_assigns(socket)
-
-    {:noreply, socket}
+    ok_reply(socket)
   end
 
   def handle_event("guess_coordinate", <<row, col>>, socket) do
@@ -116,6 +136,10 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
           assign_error_message(socket.parent_pid, socket, reason)
       end
 
+    ok_reply(socket)
+  end
+
+  defp ok_reply(socket) do
     update_child_assigns(socket)
 
     {:noreply, socket}

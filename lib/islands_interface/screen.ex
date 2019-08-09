@@ -3,7 +3,7 @@ defmodule IslandsInterface.Screen do
 
   @tile_types [:sea, :island, :forest, :miss]
 
-  def init_board() do
+  def init_board do
     for row <- 1..10 do
       for col <- 1..10 do
         {:ok, coordinate} = Coordinate.new(row, col)
@@ -13,7 +13,7 @@ defmodule IslandsInterface.Screen do
     |> List.flatten()
     |> Enum.reduce(%{}, fn {type, coordinate}, board ->
       board =
-        unless board[coordinate.row] do
+        if board[coordinate.row] == nil do
           put_in(board[coordinate.row], %{})
         else
           board
@@ -23,10 +23,11 @@ defmodule IslandsInterface.Screen do
     end)
   end
 
-  def init_player_islands() do
+  def init_player_islands do
     Island.types()
     |> Enum.map(fn island ->
-      case island do
+      island
+      |> case do
         :square -> %{name: "Square"}
         :atoll -> %{name: "Atoll"}
         :dot -> %{name: "Dot"}
@@ -48,7 +49,8 @@ defmodule IslandsInterface.Screen do
   end
 
   def choose_island(player_islands, chosen_island) do
-    Enum.map(player_islands, fn {island, info} ->
+    player_islands
+    |> Enum.map(fn {island, info} ->
       cond do
         island == chosen_island -> {island, put_in(info.state, :positioning)}
         info.state == :positioned -> {island, info}

@@ -31,7 +31,8 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     {:ok, _} = :timer.send_interval(3000, self(), :count_games)
 
     socket =
-      assign(socket, @initial_state)
+      socket
+      |> assign(@initial_state)
       |> assign(:player_islands, Screen.init_player_islands())
       |> assign(:board, Screen.init_board())
       |> assign(:opponent_board, Screen.init_board())
@@ -41,10 +42,12 @@ defmodule IslandsInterfaceWeb.GameLiveView do
 
   def handle_info(:count_games, socket) do
     games_running = Enum.count(GameSupervisor.children())
+    player = socket.assigns.player1
 
     game_log =
-      if games_running > 0 && socket.assigns.player1 do
-        IslandsEngine.Game.via_tuple(socket.assigns.player1)
+      if games_running > 0 && player do
+        player
+        |> IslandsEngine.Game.via_tuple()
         |> :sys.get_state()
         |> inspect(pretty: true)
       else
@@ -52,7 +55,8 @@ defmodule IslandsInterfaceWeb.GameLiveView do
       end
 
     socket =
-      assign(socket, :games_running, games_running)
+      socket
+      |> assign(:games_running, games_running)
       |> assign(:game_log, game_log)
 
     {:noreply, socket}
@@ -173,7 +177,8 @@ defmodule IslandsInterfaceWeb.GameLiveView do
 
     if current_player do
       state_key =
-        case current_player do
+        current_player
+        |> case do
           :player1 -> socket.assigns.player1
           :player2 -> socket.assigns.player2
         end

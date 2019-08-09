@@ -18,6 +18,9 @@
           Set Islands
         </button> 
       <% end %>
+      <button class="button" phx-click="debug_position_islands">
+        Debug position_islands
+      </button> 
     </div>
     <div class="column column-40">
       <div class="grid">
@@ -27,8 +30,8 @@
             <%= if(@current_island) do %>
               <div class="tile tile-action <%= get_tile_class(type) %>"
                 phx-click="position_island"
-              phx-value="<%= [row_idx, col_idx] %>">
-            </div>
+                phx-value="<%= [row_idx, col_idx] %>">
+              </div>
             <% else %> 
               <div class="tile <%= get_tile_class(type) %>"></div>
             <% end %>
