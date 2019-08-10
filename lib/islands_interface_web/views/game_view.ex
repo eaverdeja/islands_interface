@@ -12,6 +12,7 @@ defmodule IslandsInterfaceWeb.GameView do
       :player1_set -> "Player 1 is set"
       :player2_set -> "Player 2 is set"
       :game_on -> "Game on!"
+      :game_over -> "Game over"
       _ -> "Unknown state"
     end
   end

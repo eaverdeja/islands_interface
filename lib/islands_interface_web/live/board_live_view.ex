@@ -92,7 +92,7 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
     socket =
       case Screen.set_islands(game, player) do
         {:ok, new_board} ->
-          broadcast_set_islands(game, player)
+          do_broadcast(game, :set_islands, %{"player" => player})
 
           player_islands = socket.assigns.player_islands
 
@@ -123,12 +123,23 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
           assign(socket, :opponent_board, Screen.change_tile(opponent_board, row, col, :miss))
 
         {:ok, :hit, :win} ->
-          broadcast_guessed_coordinates(socket.parent_pid, game, row, col)
+          do_broadcast(socket.parent_pid, game, :game_over, %{})
 
-          assign(socket, :opponent_board, Screen.change_tile(opponent_board, row, col, :forest))
+          do_broadcast(socket.parent_pid, game, :guessed_coordinates, %{
+            "row" => row,
+            "col" => col
+          })
+
+          socket
+          |> assign(:opponent_board, Screen.change_tile(opponent_board, row, col, :forest))
+          |> assign(:game_state, :game_over)
+          |> assign(:won_game, :winner)
 
         {:ok, :hit, _forested} ->
-          broadcast_guessed_coordinates(socket.parent_pid, game, row, col)
+          do_broadcast(socket.parent_pid, game, :guessed_coordinates, %{
+            "row" => row,
+            "col" => col
+          })
 
           assign(socket, :opponent_board, Screen.change_tile(opponent_board, row, col, :forest))
 
@@ -149,20 +160,20 @@ defmodule IslandsInterfaceWeb.BoardLiveView do
     send(socket.parent_pid, {:update_child_assigns, socket.assigns})
   end
 
-  defp broadcast_set_islands(game, player) do
+  defp do_broadcast(game, message, params) do
     Phoenix.PubSub.broadcast!(
       IslandsInterface.PubSub,
       "game:" <> game,
-      {:set_islands, %{"player" => player}}
+      {message, params}
     )
   end
 
-  defp broadcast_guessed_coordinates(pid, game, row, col) do
+  defp do_broadcast(pid, game, message, params) do
     Phoenix.PubSub.broadcast_from!(
       IslandsInterface.PubSub,
       pid,
       "game:" <> game,
-      {:guessed_coordinates, %{"row" => row, "col" => col}}
+      {message, params}
     )
   end
 end

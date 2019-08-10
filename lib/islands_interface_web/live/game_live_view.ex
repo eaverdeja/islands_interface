@@ -19,6 +19,7 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     opponent_board: %{},
     error_message: nil,
     current_player: nil,
+    won_game: nil,
     game_state: nil,
     game_log: nil
   }
@@ -118,6 +119,12 @@ defmodule IslandsInterfaceWeb.GameLiveView do
 
   def handle_info({:guessed_coordinates, %{"row" => row, "col" => col}}, socket) do
     socket = update(socket, :board, &Screen.change_tile(&1, row, col, :forest))
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:game_over, _}, socket) do
+    socket = assign(socket, :won_game, :loser)
 
     {:noreply, socket}
   end
