@@ -19,11 +19,10 @@
       </div>
     </div>
   </div>
+  <%= form_for :session, Routes.pow_session_path(@socket, :delete), [csrf_token: @csrf_token, method: :delete], fn f -> %>
+    <button type="submit">Logout</button>
+  <% end %>
 
-        <button type="submit">Join game</button>
-      </form>
-    </div>
-  </div>
   <div class="row <%= get_visibility(@game_state != nil) %>">
     <div class="column column-20">
       <h2>Info</h2>

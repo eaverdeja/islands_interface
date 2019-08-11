@@ -9,6 +9,7 @@ defmodule IslandsInterfaceWeb.GameLiveView do
   import IslandsInterfaceWeb.LiveErrorHelper, only: [assign_error_message: 2]
 
   @initial_state %{
+    csrf_token: nil,
     games_running: 0,
     game_already_started: false,
     player1: nil,
@@ -31,7 +32,7 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     Phoenix.View.render(IslandsInterfaceWeb.GameView, "index.html", assigns)
   end
 
-  def mount(%{"current_user" => %{email: email}}, socket) do
+  def mount(%{"current_user" => %{email: email}, "_csrf_token" => csrf_token}, socket) do
     state_key = build_state_key(email)
 
     {:ok, _} = :timer.send_interval(3000, self(), :count_games)
@@ -62,6 +63,7 @@ defmodule IslandsInterfaceWeb.GameLiveView do
           assign_state(socket, state)
       end
       |> assign(:current_user, email)
+      |> assign(:csrf_token, csrf_token)
 
     {:ok, socket}
   end
