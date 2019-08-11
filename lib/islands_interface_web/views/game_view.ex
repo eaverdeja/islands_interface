@@ -16,4 +16,9 @@ defmodule IslandsInterfaceWeb.GameView do
       _ -> "Unknown state"
     end
   end
+
+  def selected_attr(game, game),
+    do: "selected=\"selected\""
+
+  def selected_attr(_, _), do: ""
 end

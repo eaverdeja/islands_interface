@@ -22,7 +22,9 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     current_user: nil,
     won_game: nil,
     game_state: nil,
-    game_log: nil
+    game_log: nil,
+    open_games: [],
+    current_game: nil
   }
 
   def render(assigns) do
@@ -36,6 +38,8 @@ defmodule IslandsInterfaceWeb.GameLiveView do
 
     socket =
       with [] <- :ets.lookup(:interface_state, state_key) do
+        subscribe_to_lobby()
+
         socket
         |> assign(@initial_state)
         |> assign(:player_islands, Screen.init_player_islands())
@@ -43,7 +47,18 @@ defmodule IslandsInterfaceWeb.GameLiveView do
         |> assign(:opponent_board, Screen.init_board())
       else
         [{^state_key, state}] ->
-          subscribe_to_game(state.player1, state.player)
+          case state.game_state do
+            :pending ->
+              subscribe_to_lobby()
+              subscribe_to_game(state.current_game, state.current_user)
+
+            nil ->
+              subscribe_to_lobby()
+
+            _ ->
+              subscribe_to_game(state.current_game, state.current_user)
+          end
+
           assign_state(socket, state)
       end
       |> assign(:current_user, email)
@@ -77,7 +92,16 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     {:noreply, assign(socket, :error_message, nil)}
   end
 
-  def handle_info({:after_join, game, screen_name}, socket) do
+  def handle_info(:after_join_lobby, socket) do
+    {:ok, _} =
+      Presence.track(self(), "lobby", socket.assigns.current_user, %{
+        online_at: inspect(System.system_time(:second))
+      })
+
+    {:noreply, assign(socket, :open_games, get_open_games())}
+  end
+
+  def handle_info({:after_join_game, game, screen_name}, socket) do
     {:ok, _} =
       Presence.track(self(), get_topic(game), screen_name, %{
         online_at: inspect(System.system_time(:second))
@@ -89,8 +113,23 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     {:noreply, socket}
   end
 
+  def handle_info(%Broadcast{event: "presence_diff", topic: "lobby"}, socket) do
+    socket =
+      socket
+      |> assign(%{
+        online_users: Presence.list("lobby")
+      })
+      |> assign(:open_games, get_open_games())
+
+    {:noreply, socket}
+  end
+
   def handle_info(%Broadcast{event: "presence_diff"}, socket) do
     {:noreply, fetch(socket)}
+  end
+
+  def handle_info(:new_game, socket) do
+    {:noreply, assign(socket, :open_games, get_open_games())}
   end
 
   def handle_info({:new_player, %{"game" => game, "new_player" => new_player}}, socket) do
@@ -145,10 +184,12 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     socket =
       with {:ok, _pid} <- GameSupervisor.start_game(name) do
         subscribe_to_game(name)
+        broadcast_game_started()
 
         socket
         |> assign(:player1, name)
         |> assign(:current_player, :player1)
+        |> assign(:current_game, name)
         |> assign(:game_state, :pending)
       else
         {:error, {:already_started, _pid}} ->
@@ -158,7 +199,8 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     {:noreply, socket}
   end
 
-  def handle_event("join_game", %{"game" => game, "name" => name}, socket) do
+  def handle_event("join_game", game, socket) do
+    name = socket.assigns.current_user
     state_key = build_state_key(name)
 
     socket =
@@ -167,13 +209,16 @@ defmodule IslandsInterfaceWeb.GameLiveView do
         subscribe_to_game(game, name)
         broadcast_join(game, name)
 
-        assign(socket, :current_player, :player2)
+        socket
+        |> assign(:current_player, :player2)
+        |> assign(:current_game, game)
       else
         :error ->
           assign_error_message(socket, :no_game)
 
         [{^state_key, state}] ->
           subscribe_to_game(game, name)
+          broadcast_join(game, name)
           assign_state(socket, state)
       end
 
@@ -204,7 +249,7 @@ defmodule IslandsInterfaceWeb.GameLiveView do
   end
 
   defp fetch(socket) do
-    game = socket.assigns.player1
+    game = socket.assigns.current_game
 
     if game do
       assign(socket, %{
@@ -215,11 +260,37 @@ defmodule IslandsInterfaceWeb.GameLiveView do
 
   defp get_topic(name), do: "game:" <> name
 
+  defp subscribe_to_lobby do
+    :ok = Phoenix.PubSub.subscribe(IslandsInterface.PubSub, "lobby")
+    send(self(), :after_join_lobby)
+  end
+
+  defp get_open_games do
+    Presence.list("lobby")
+    |> Map.keys()
+    |> Enum.filter(fn user ->
+      Enum.any?(GameSupervisor.children(), fn {_, pid, _, _} ->
+        case Registry.lookup(Registry.Game, user) do
+          [{^pid, _}] -> true
+          _ -> false
+        end
+      end)
+    end)
+  end
+
   defp subscribe_to_game(game), do: subscribe_to_game(game, game)
 
   defp subscribe_to_game(game, screen_name) do
     :ok = Phoenix.PubSub.subscribe(IslandsInterface.PubSub, get_topic(game))
-    send(self(), {:after_join, game, screen_name})
+    send(self(), {:after_join_game, game, screen_name})
+  end
+
+  defp broadcast_game_started do
+    Phoenix.PubSub.broadcast!(
+      IslandsInterface.PubSub,
+      "lobby",
+      :new_game
+    )
   end
 
   defp broadcast_join(game, new_player) do

@@ -7,17 +7,18 @@
     </div>
 
     <div class="column column-80">
-      <form phx-submit="join_game">
-        <div class="row">
-          <div class="column">
-            <label for="game">Game</label>
-            <input type="text" name="game">
-          </div>
-          <div class="column">
-            <label for="name">Name</label>
-            <input type="text" name="name">
-          </div>
+      <div class="row">
+        <div class="column">
+          <label for="game">Games</label>
+          <%= for g <- @open_games do %>
+            <button class="button" phx-click="join_game" phx-value="<%= g %>">
+              Join <%= g %>'s game
+            </button>
+          <% end %>
         </div>
+      </div>
+    </div>
+  </div>
 
         <button type="submit">Join game</button>
       </form>
