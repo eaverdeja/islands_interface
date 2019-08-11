@@ -7,6 +7,8 @@
 # General application configuration
 use Mix.Config
 
+config :islands_interface,
+  ecto_repos: [IslandsInterface.Repo]
 # Configures the endpoint
 config :islands_interface, IslandsInterfaceWeb.Endpoint,
   url: [host: "localhost"],
