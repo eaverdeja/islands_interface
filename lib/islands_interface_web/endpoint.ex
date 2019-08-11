@@ -42,7 +42,9 @@ defmodule IslandsInterfaceWeb.Endpoint do
   plug Plug.Session,
     store: :cookie,
     key: "_islands_interface_key",
-    signing_salt: "BcBpGudV"
+    signing_salt: "caCZ0i30EdrbAOBV8i4zs0dHJ8YCJF0MP2flxKYQjlv+WuRqMxFnlk9QMJ0TAV8a"
+
+  plug Pow.Plug.Session, otp_app: :islands_interface
 
   plug IslandsInterfaceWeb.Router
 end

@@ -19,6 +19,7 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     opponent_board: %{},
     error_message: nil,
     current_player: nil,
+    current_user: nil,
     won_game: nil,
     game_state: nil,
     game_log: nil
@@ -28,15 +29,24 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     Phoenix.View.render(IslandsInterfaceWeb.GameView, "index.html", assigns)
   end
 
-  def mount(_session, socket) do
+  def mount(%{"current_user" => %{email: email}}, socket) do
+    state_key = build_state_key(email)
+
     {:ok, _} = :timer.send_interval(3000, self(), :count_games)
 
     socket =
-      socket
-      |> assign(@initial_state)
-      |> assign(:player_islands, Screen.init_player_islands())
-      |> assign(:board, Screen.init_board())
-      |> assign(:opponent_board, Screen.init_board())
+      with [] <- :ets.lookup(:interface_state, state_key) do
+        socket
+        |> assign(@initial_state)
+        |> assign(:player_islands, Screen.init_player_islands())
+        |> assign(:board, Screen.init_board())
+        |> assign(:opponent_board, Screen.init_board())
+      else
+        [{^state_key, state}] ->
+          subscribe_to_game(state.player1, state.player)
+          assign_state(socket, state)
+      end
+      |> assign(:current_user, email)
 
     {:ok, socket}
   end
@@ -129,28 +139,20 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     {:noreply, socket}
   end
 
-  def handle_event("new_game", %{"name" => name}, socket) do
-    state_key = build_state_key(name)
+  def handle_event("new_game", "", socket) do
+    name = socket.assigns.current_user
 
     socket =
-      with [] <- :ets.lookup(:interface_state, state_key),
-           {:ok, _pid} <- GameSupervisor.start_game(name) do
+      with {:ok, _pid} <- GameSupervisor.start_game(name) do
         subscribe_to_game(name)
 
-        socket =
-          socket
-          |> assign(:player1, name)
-          |> assign(:current_player, :player1)
-          |> assign(:game_state, :pending)
-
         socket
+        |> assign(:player1, name)
+        |> assign(:current_player, :player1)
+        |> assign(:game_state, :pending)
       else
         {:error, {:already_started, _pid}} ->
           assign_error_message(socket, :already_started)
-
-        [{^state_key, state}] ->
-          subscribe_to_game(name)
-          assign_state(socket, state)
       end
 
     {:noreply, socket}

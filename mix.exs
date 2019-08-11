@@ -44,6 +44,7 @@ defmodule IslandsInterface.MixProject do
       {:plug_cowboy, "~> 2.0"},
       {:islands_engine, path: "../islands_engine"},
       {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"},
+      {:pow, "~> 1.0.11"},
       {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false}
     ]
   end

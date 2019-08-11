@@ -1,5 +1,6 @@
 defmodule IslandsInterfaceWeb.Router do
   use IslandsInterfaceWeb, :router
+  use Pow.Phoenix.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -10,12 +11,23 @@ defmodule IslandsInterfaceWeb.Router do
     plug Phoenix.LiveView.Flash
   end
 
+  pipeline :protected do
+    plug Pow.Plug.RequireAuthenticated,
+      error_handler: Pow.Phoenix.PlugErrorHandler
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
   end
 
-  scope "/", IslandsInterfaceWeb do
+  scope "/" do
     pipe_through :browser
+
+    pow_routes()
+  end
+
+  scope "/", IslandsInterfaceWeb do
+    pipe_through [:browser, :protected]
 
     get "/", WelcomeController, :index
   end

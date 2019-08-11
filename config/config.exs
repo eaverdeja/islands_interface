@@ -9,6 +9,7 @@ use Mix.Config
 
 config :islands_interface,
   ecto_repos: [IslandsInterface.Repo]
+
 # Configures the endpoint
 config :islands_interface, IslandsInterfaceWeb.Endpoint,
   url: [host: "localhost"],
@@ -26,6 +27,10 @@ config :logger, :console,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+config :islands_interface, :pow,
+  user: IslandsInterface.Users.User,
+  repo: IslandsInterface.Repo
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

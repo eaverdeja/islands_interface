@@ -3,12 +3,7 @@
     class="row <%= get_visibility(@game_state == nil) %>"
   >
     <div class="column column-20">
-      <form phx-submit="new_game">
-        <label for="name">Name</label>
-        <input type="text" name="name">
-
-        <button type="submit">New game</button>
-      </form>
+      <button phx-click="new_game">New game</button>
     </div>
 
     <div class="column column-80">
