@@ -2,9 +2,7 @@ defmodule IslandsInterface.LobbyHandler do
   alias IslandsEngine.GameSupervisor
   alias IslandsInterface.{GameContext, Screen}
 
-  def handle_event(["new_game"], "", %GameContext{} = context) do
-    name = context.current_user
-
+  def handle_event(["new_game"], "", %GameContext{current_user: name}) do
     with {:ok, _pid} <- GameSupervisor.start_game(name) do
       subscribe_to_game(name)
       broadcast_game_started()
@@ -22,8 +20,7 @@ defmodule IslandsInterface.LobbyHandler do
     end
   end
 
-  def handle_event(["join_game"], game, %GameContext{} = context) do
-    name = context.current_user
+  def handle_event(["join_game"], game, %GameContext{current_user: name}) do
     state_key = build_state_key(name)
 
     with [] <- :ets.lookup(:interface_state, state_key),
