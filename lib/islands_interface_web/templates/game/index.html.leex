@@ -73,7 +73,7 @@
     </div>
     <div class="column column-80">
       <%= if @player1 && @player2 do %>
-        <%= live_render(@socket, IslandsInterfaceWeb.BoardLiveView, session: %{
+        <%= render IslandsInterfaceWeb.BoardView, "index.html", %{
           game: @player1,
           board: @board,
           opponent_board: @opponent_board,
@@ -81,7 +81,7 @@
           player: (if @current_player == :player1, do: @player1, else: @player2),
           player_islands: @player_islands,
           current_player: @current_player
-        }) %>
+        } %>
       <% end %>
     </div>
   </div>
