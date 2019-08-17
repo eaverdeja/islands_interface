@@ -1,6 +1,8 @@
 defmodule IslandsInterfaceWeb.LiveEventHandler do
   import Phoenix.LiveView, only: [assign: 2]
   import IslandsInterfaceWeb.LiveErrorHelper, only: [assign_error_message: 2]
+
+  alias IslandsInterfaceWeb.Pubsub.Dispatcher
   alias IslandsInterface.{BoardHandler, LobbyHandler, GameContext}
 
   def handle_event(event_binary, params, socket) do
@@ -24,6 +26,14 @@ defmodule IslandsInterfaceWeb.LiveEventHandler do
     IO.puts("Unknown event. Refusing to dispatch: #{inspect(unknown_event)}")
 
     {:ok, %{}}
+  end
+
+  defp handle_dispatch({:ok, dispatch_result, events}, socket) do
+    socket = assign(socket, dispatch_result)
+    context = GameContext.new(socket.assigns)
+    Dispatcher.handle(events, context)
+
+    {:noreply, socket}
   end
 
   defp handle_dispatch({:ok, dispatch_result}, socket) do

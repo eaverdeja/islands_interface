@@ -24,4 +24,11 @@ defmodule IslandsInterface.GameContext do
   end
 
   def to_enum(%__MODULE__{} = context), do: Map.to_list(context)
+
+  def get_current_player_name(%__MODULE__{current_player: current_player} = context) do
+    case current_player do
+      :player1 -> context.player1
+      :player2 -> context.player2
+    end
+  end
 end
