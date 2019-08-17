@@ -43,9 +43,15 @@ defmodule IslandsInterface.Screen do
   end
 
   def add_player(game, name) do
-    game
-    |> via()
-    |> Game.add_player(name)
+    try do
+      game
+      |> via()
+      |> Game.add_player(name)
+
+      :ok
+    catch
+      :exit, _ -> :error
+    end
   end
 
   def choose_island(player_islands, chosen_island) do
