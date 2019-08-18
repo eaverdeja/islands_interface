@@ -7,7 +7,7 @@ defmodule IslandsInterface.MixProject do
       version: "0.1.0",
       elixir: "~> 1.5",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: [:phoenix, :gettext] ++ Mix.compilers(),
+      compilers: [:phoenix, :gettext] ++ Mix.compilers() ++ [:boundaries],
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -44,6 +44,7 @@ defmodule IslandsInterface.MixProject do
       {:plug_cowboy, "~> 2.0"},
       {:islands_engine, path: "../islands_engine"},
       {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"},
+      {:boundaries, github: "sasa1977/boundaries"},
       {:pow, "~> 1.0.11"},
       {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false}
     ]
