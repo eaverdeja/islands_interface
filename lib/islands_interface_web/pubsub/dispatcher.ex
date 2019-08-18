@@ -1,33 +1,44 @@
 defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
   alias IslandsInterface.GameContext
 
-  def handle(events, %GameContext{} = context) do
-    player_name = GameContext.get_current_player_name(context)
+  def handle(events, %GameContext{current_game: game, current_user: player_name}) do
+    Enum.each(events, &dispatch_event(game, player_name, &1))
+  end
 
-    Enum.each(events, fn event ->
-      case event do
-        :subscribe_to_game ->
-          subscribe_to_game(context.current_game, player_name)
+  defp dispatch_event(game, player_name, event) do
+    case event do
+      :subscribe_to_lobby ->
+        subscribe_to_lobby()
 
-        :broadcast_game_started ->
-          broadcast_game_started()
+      :subscribe_to_game ->
+        subscribe_to_game(game, player_name)
 
-        :broadcast_join ->
-          broadcast_join(context.current_game, player_name)
+      :new_game ->
+        lobby_broadcast(event)
 
-        {:set_islands, params} ->
-          broadcast_set_islands(context.current_game, params)
+      :new_player ->
+        game_broadcast(game, event, %{"new_player" => player_name})
 
-        {:guessed_coordinates, params} ->
-          broadcast_guessed_coordinates(context.current_game, params)
+      :handshake ->
+        game_broadcast(game, event)
 
-        :game_over ->
-          broadcast_game_over(context.current_game)
+      {:set_islands = message, params} ->
+        game_broadcast_from(game, message, params)
 
-        event ->
-          IO.puts("Unknown event #{inspect(event)}")
-      end
-    end)
+      {:guessed_coordinates = message, params} ->
+        game_broadcast_from(game, message, params)
+
+      :game_over ->
+        game_broadcast(game, event)
+
+      event ->
+        IO.puts("Unknown event: #{inspect(event)}")
+    end
+  end
+
+  defp subscribe_to_lobby do
+    :ok = Phoenix.PubSub.subscribe(IslandsInterface.PubSub, "lobby")
+    send(self(), :after_join_lobby)
   end
 
   defp subscribe_to_game(game, screen_name) do
@@ -35,46 +46,28 @@ defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
     send(self(), {:after_join_game, game, screen_name})
   end
 
-  defp broadcast_game_started do
+  defp game_broadcast(game, message, params \\ %{}) do
+    Phoenix.PubSub.broadcast!(
+      IslandsInterface.PubSub,
+      get_topic(game),
+      {message, params}
+    )
+  end
+
+  defp game_broadcast_from(game, message, params) do
+    Phoenix.PubSub.broadcast_from!(
+      IslandsInterface.PubSub,
+      self(),
+      get_topic(game),
+      {message, params}
+    )
+  end
+
+  defp lobby_broadcast(message) do
     Phoenix.PubSub.broadcast!(
       IslandsInterface.PubSub,
       "lobby",
-      :new_game
-    )
-  end
-
-  defp broadcast_join(game, new_player) do
-    Phoenix.PubSub.broadcast!(
-      IslandsInterface.PubSub,
-      get_topic(game),
-      {:new_player, %{"game" => game, "new_player" => new_player}}
-    )
-  end
-
-  defp broadcast_set_islands(game, params) do
-    Phoenix.PubSub.broadcast_from!(
-      IslandsInterface.PubSub,
-      self(),
-      get_topic(game),
-      {:set_islands, params}
-    )
-  end
-
-  defp broadcast_guessed_coordinates(game, params) do
-    Phoenix.PubSub.broadcast_from!(
-      IslandsInterface.PubSub,
-      self(),
-      get_topic(game),
-      {:guessed_coordinates, params}
-    )
-  end
-
-  defp broadcast_game_over(game) do
-    Phoenix.PubSub.broadcast_from!(
-      IslandsInterface.PubSub,
-      self(),
-      get_topic(game),
-      {:game_over, %{}}
+      message
     )
   end
 
