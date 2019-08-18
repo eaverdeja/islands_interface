@@ -31,7 +31,7 @@ defmodule IslandsInterfaceWeb.LiveEventHandler do
   defp handle_dispatch({:ok, dispatch_result, events}, socket) do
     socket = assign(socket, dispatch_result)
     context = GameContext.new(socket.assigns)
-    Dispatcher.handle(events, context)
+    _ = Dispatcher.handle(context, events)
 
     {:noreply, socket}
   end

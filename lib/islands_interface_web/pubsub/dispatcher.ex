@@ -1,8 +1,10 @@
 defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
   alias IslandsInterface.GameContext
 
-  def handle(events, %GameContext{current_game: game, current_user: player_name}) do
+  def handle(%GameContext{current_game: game, current_user: player_name} = context, events) do
     Enum.each(events, &dispatch_event(game, player_name, &1))
+
+    context
   end
 
   defp dispatch_event(game, player_name, event) do
@@ -11,7 +13,7 @@ defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
         subscribe_to_lobby()
 
       :subscribe_to_game ->
-        subscribe_to_game(game, player_name)
+        subscribe_to_game(game)
 
       :new_game ->
         lobby_broadcast(event)
@@ -41,9 +43,9 @@ defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
     send(self(), :after_join_lobby)
   end
 
-  defp subscribe_to_game(game, screen_name) do
+  defp subscribe_to_game(game) do
     :ok = Phoenix.PubSub.subscribe(IslandsInterface.PubSub, get_topic(game))
-    send(self(), {:after_join_game, game, screen_name})
+    send(self(), :after_join_game)
   end
 
   defp game_broadcast(game, message, params \\ %{}) do
