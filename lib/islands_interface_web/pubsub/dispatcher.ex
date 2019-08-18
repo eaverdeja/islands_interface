@@ -15,6 +15,15 @@ defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
         :broadcast_join ->
           broadcast_join(context.current_game, player_name)
 
+        {:set_islands, params} ->
+          broadcast_set_islands(context.current_game, params)
+
+        {:guessed_coordinates, params} ->
+          broadcast_guessed_coordinates(context.current_game, params)
+
+        :game_over ->
+          broadcast_game_over(context.current_game)
+
         event ->
           IO.puts("Unknown event #{inspect(event)}")
       end
@@ -39,6 +48,33 @@ defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
       IslandsInterface.PubSub,
       get_topic(game),
       {:new_player, %{"game" => game, "new_player" => new_player}}
+    )
+  end
+
+  defp broadcast_set_islands(game, params) do
+    Phoenix.PubSub.broadcast_from!(
+      IslandsInterface.PubSub,
+      self(),
+      get_topic(game),
+      {:set_islands, params}
+    )
+  end
+
+  defp broadcast_guessed_coordinates(game, params) do
+    Phoenix.PubSub.broadcast_from!(
+      IslandsInterface.PubSub,
+      self(),
+      get_topic(game),
+      {:guessed_coordinates, params}
+    )
+  end
+
+  defp broadcast_game_over(game) do
+    Phoenix.PubSub.broadcast_from!(
+      IslandsInterface.PubSub,
+      self(),
+      get_topic(game),
+      {:game_over, %{}}
     )
   end
 

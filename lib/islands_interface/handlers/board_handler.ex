@@ -6,11 +6,12 @@ defmodule IslandsInterface.BoardHandler do
       }) do
     chosen_island = String.to_existing_atom(island)
 
-    {:ok,
-     %{
-       player_islands: Screen.choose_island(player_islands, chosen_island),
-       current_island: chosen_island
-     }}
+    new_state = %{
+      player_islands: Screen.choose_island(player_islands, chosen_island),
+      current_island: chosen_island
+    }
+
+    {:ok, new_state}
   end
 
   def handle_event(
@@ -26,12 +27,13 @@ defmodule IslandsInterface.BoardHandler do
     with {:ok, new_board} <- Screen.position_island(game, current_player, island, row, col) do
       player_islands = put_in(player_islands, [island, :state], :positioned)
 
-      {:ok,
-       %{
-         player_islands: player_islands,
-         board: new_board,
-         current_island: nil
-       }}
+      new_state = %{
+        player_islands: player_islands,
+        board: new_board,
+        current_island: nil
+      }
+
+      {:ok, new_state}
     else
       {:error, reason} ->
         {:error, reason}
@@ -45,18 +47,19 @@ defmodule IslandsInterface.BoardHandler do
       }) do
     case Screen.set_islands(game, player) do
       {:ok, new_board} ->
-        do_broadcast(game, :set_islands, %{"player" => player})
-
         player_islands =
           Enum.reduce(player_islands, %{}, fn {type, info}, player_islands ->
             Map.put_new(player_islands, type, put_in(info.state, :set))
           end)
 
-        {:ok,
-         %{
-           player_islands: player_islands,
-           board: new_board
-         }}
+        new_state = %{
+          player_islands: player_islands,
+          board: new_board
+        }
+
+        events = [{:set_islands, %{"player" => player}}]
+
+        {:ok, new_state, events}
 
       {:error, reason} ->
         {:error, reason}
@@ -70,36 +73,44 @@ defmodule IslandsInterface.BoardHandler do
       }) do
     case Screen.guess_coordinate(game, current_player, row, col) do
       {:ok, :miss} ->
-        {:ok,
-         %{
-           opponent_board: Screen.change_tile(opponent_board, row, col, :miss)
-         }}
+        new_state = %{
+          opponent_board: Screen.change_tile(opponent_board, row, col, :miss)
+        }
+
+        {:ok, new_state}
 
       {:ok, :hit, :win} ->
-        do_broadcast(game, :game_over, %{})
+        new_state = %{
+          opponent_board: Screen.change_tile(opponent_board, row, col, :forest),
+          game_state: :game_over,
+          won_game: :winner
+        }
 
-        do_broadcast(game, :guessed_coordinates, %{
-          "row" => row,
-          "col" => col
-        })
+        events = [
+          {:guessed_coordinates,
+           %{
+             "row" => row,
+             "col" => col
+           }},
+          :game_over
+        ]
 
-        {:ok,
-         %{
-           opponent_board: Screen.change_tile(opponent_board, row, col, :forest),
-           game_state: :game_over,
-           won_game: :winner
-         }}
+        {:ok, new_state, events}
 
       {:ok, :hit, _forested} ->
-        do_broadcast(game, :guessed_coordinates, %{
-          "row" => row,
-          "col" => col
-        })
+        new_state = %{
+          opponent_board: Screen.change_tile(opponent_board, row, col, :forest)
+        }
 
-        {:ok,
-         %{
-           opponent_board: Screen.change_tile(opponent_board, row, col, :forest)
-         }}
+        events = [
+          {:guessed_coordinates,
+           %{
+             "row" => row,
+             "col" => col
+           }}
+        ]
+
+        {:ok, new_state, events}
 
       {:error, reason} ->
         {:error, reason}
@@ -113,25 +124,17 @@ defmodule IslandsInterface.BoardHandler do
       }) do
     with %{board: new_board, player_islands: islands} <-
            debug_position_islands(game, current_player, player_islands) do
-      {:ok,
-       %{
-         player_islands: islands,
-         board: new_board,
-         current_island: nil
-       }}
+      new_state = %{
+        player_islands: islands,
+        board: new_board,
+        current_island: nil
+      }
+
+      {:ok, new_state}
     else
       {:error, reason} ->
         {:error, reason}
     end
-  end
-
-  defp do_broadcast(game, message, params) do
-    Phoenix.PubSub.broadcast_from!(
-      IslandsInterface.PubSub,
-      self(),
-      "game:" <> game,
-      {message, params}
-    )
   end
 
   defp debug_position_islands(game, current_player, player_islands) do

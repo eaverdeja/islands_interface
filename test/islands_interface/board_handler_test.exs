@@ -85,7 +85,9 @@ defmodule IslandsInterface.BoardHandlerTest do
         end)
         |> Enum.into(%{})
 
-      assert {:ok, %{board: board, player_islands: ^player_islands}} =
+      events = [set_islands: %{"player" => :player1}]
+
+      assert {:ok, %{board: board, player_islands: ^player_islands}, ^events} =
                BoardHandler.handle_event(["set_islands"], "", context)
     end
   end
