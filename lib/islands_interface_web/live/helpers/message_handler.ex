@@ -1,5 +1,5 @@
 defmodule IslandsInterfaceWeb.MessageHandler do
-  alias IslandsEngine.{Game, GameSupervisor}
+  alias IslandsEngine.{GameSupervisor}
   alias IslandsInterface.{Cache, GameContext, Screen}
   alias IslandsInterfaceWeb.PresenceTracker
   alias IslandsInterfaceWeb.Pubsub.Dispatcher
@@ -63,13 +63,15 @@ defmodule IslandsInterfaceWeb.MessageHandler do
   defp get_open_games do
     PresenceTracker.users_in_lobby()
     |> Map.keys()
-    |> Enum.filter(fn user ->
-      Enum.any?(GameSupervisor.children(), fn {_, pid, _, _} ->
-        case Registry.lookup(Registry.Game, user) do
-          [{^pid, _}] -> true
-          _ -> false
-        end
-      end)
+    |> Enum.filter(&is_game_owner?/1)
+  end
+
+  defp is_game_owner?(user) do
+    Enum.any?(GameSupervisor.children(), fn {_, pid, _, _} ->
+      case Registry.lookup(Registry.Game, user) do
+        [{^pid, _}] -> true
+        _ -> false
+      end
     end)
   end
 end

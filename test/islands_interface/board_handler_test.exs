@@ -80,7 +80,8 @@ defmodule IslandsInterface.BoardHandlerTest do
       island_positions = GameEngineHelper.position_all_islands()
 
       player_islands =
-        Enum.map(@player_islands, fn {name, island} ->
+        @player_islands
+        |> Enum.map(fn {name, island} ->
           {name, %{island | state: :set}}
         end)
         |> Enum.into(%{})
