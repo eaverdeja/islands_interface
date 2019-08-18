@@ -1,6 +1,6 @@
 defmodule IslandsInterfaceWeb.MessageHandler do
   alias IslandsEngine.{Game, GameSupervisor}
-  alias IslandsInterface.{GameContext, Screen}
+  alias IslandsInterface.{Cache, GameContext, Screen}
   alias IslandsInterfaceWeb.PresenceTracker
   alias IslandsInterfaceWeb.Pubsub.Dispatcher
 
@@ -22,9 +22,7 @@ defmodule IslandsInterfaceWeb.MessageHandler do
 
   def handle(:after_join_game, %GameContext{} = context) do
     :ok = PresenceTracker.track_game(context)
-
-    state_key = build_state_key(context.current_user)
-    :ets.insert(:interface_state, {state_key, context})
+    Cache.save(context)
   end
 
   def handle(:new_game, %GameContext{}) do
@@ -73,9 +71,5 @@ defmodule IslandsInterfaceWeb.MessageHandler do
         end
       end)
     end)
-  end
-
-  defp build_state_key(screen_name) do
-    :"#{screen_name}_state"
   end
 end

@@ -21,10 +21,7 @@ defmodule IslandsInterface.LobbyHandler do
   end
 
   def handle_event(["join_game"], game, %GameContext{current_user: name}) do
-    state_key = build_state_key(name)
-
-    with [] <- :ets.lookup(:interface_state, state_key),
-         :ok <- Screen.add_player(game, name) do
+    with :ok <- Screen.add_player(game, name) do
       new_state = %{
         current_game: game,
         current_player: :player2,
@@ -37,16 +34,6 @@ defmodule IslandsInterface.LobbyHandler do
     else
       :error ->
         {:error, :no_game}
-
-      [{^state_key, state}] ->
-        new_state = GameContext.to_enum(state)
-        events = [:subscribe_to_game, :new_player]
-
-        {:ok, new_state, events}
     end
-  end
-
-  defp build_state_key(screen_name) do
-    :"#{screen_name}_state"
   end
 end
