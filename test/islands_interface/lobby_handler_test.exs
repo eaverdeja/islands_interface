@@ -1,13 +1,13 @@
 defmodule IslandsInterface.LobbyHandlerTest do
   use ExUnit.Case
 
-  alias IslandsInterface.{GameContext, LobbyHandler}
+  alias IslandsInterface.{GameContext, LobbyHandler, GameEngineHelper}
   alias IslandsEngine.GameSupervisor
 
   @game_name "eaverdeja@gmail.com"
 
   setup do
-    on_exit(fn -> shutdown_game() end)
+    on_exit(fn -> GameEngineHelper.shutdown_game() end)
 
     [game_context: GameContext.new(%{current_game: @game_name})]
   end
@@ -63,13 +63,6 @@ defmodule IslandsInterface.LobbyHandlerTest do
       context = %{context | current_user: name}
 
       assert {:error, :no_game} = LobbyHandler.handle_event(["join_game"], @game_name, context)
-    end
-  end
-
-  defp shutdown_game do
-    case Registry.lookup(Registry.Game, @game_name) do
-      [{_pid, _}] -> GameSupervisor.stop_game(@game_name)
-      _ -> :ok
     end
   end
 end

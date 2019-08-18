@@ -17,7 +17,7 @@ defmodule IslandsInterface.BoardHandler do
         ["position_island"],
         <<row, col>>,
         %GameContext{
-          player1: game,
+          current_game: game,
           current_player: current_player,
           current_island: island,
           player_islands: player_islands
@@ -39,7 +39,7 @@ defmodule IslandsInterface.BoardHandler do
   end
 
   def handle_event(["set_islands"], _, %GameContext{
-        player1: game,
+        current_game: game,
         current_player: player,
         player_islands: player_islands
       }) do
