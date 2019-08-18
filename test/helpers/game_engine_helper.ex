@@ -14,11 +14,14 @@ defmodule IslandsInterface.GameEngineHelper do
 
   def position_all_islands(game_name \\ @game_name, player \\ :player1) do
     game = Game.via_tuple(game_name)
+    coordinates = [{1, 1}, {5, 1}, {7, 3}, {3, 5}, {8, 8}]
 
     Island.types()
-    |> Enum.zip([{1, 1}, {5, 1}, {7, 3}, {3, 5}, {8, 8}])
-    |> Enum.each(fn {type, {row, col}} ->
+    |> Enum.zip(coordinates)
+    |> Enum.map(fn {type, {row, col}} = island_position ->
       Game.position_island(game, player, type, row, col)
+
+      island_position
     end)
   end
 

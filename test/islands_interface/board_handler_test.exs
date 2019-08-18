@@ -77,7 +77,7 @@ defmodule IslandsInterface.BoardHandlerTest do
 
       {:ok, _pid} = GameSupervisor.start_game(@game_name)
       GameEngineHelper.replace_state(@game_name, :players_set)
-      GameEngineHelper.position_all_islands()
+      island_positions = GameEngineHelper.position_all_islands()
 
       player_islands =
         Enum.map(@player_islands, fn {name, island} ->
@@ -89,6 +89,19 @@ defmodule IslandsInterface.BoardHandlerTest do
 
       assert {:ok, %{board: board, player_islands: ^player_islands}, ^events} =
                BoardHandler.handle_event(["set_islands"], "", context)
+
+      Enum.each(island_positions, fn {type, {row, col}} ->
+        case type do
+          :s_shape ->
+            row = row + 1
+            tile = board[row][col]
+            assert ^tile = {:island, %Coordinate{row: row, col: col}}
+
+          _ ->
+            tile = board[row][col]
+            assert ^tile = {:island, %Coordinate{row: row, col: col}}
+        end
+      end)
     end
   end
 end
