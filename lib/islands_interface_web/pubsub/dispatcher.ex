@@ -1,42 +1,56 @@
 defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
   alias IslandsInterface.GameContext
 
-  def handle(%GameContext{current_game: game, current_user: player_name} = context, events) do
-    Enum.each(events, &dispatch_event(game, player_name, &1))
+  def handle(%GameContext{} = context, events) do
+    Enum.each(events, &dispatch_event(context, &1))
 
     context
   end
 
-  defp dispatch_event(game, player_name, event) do
-    case event do
-      :subscribe_to_lobby ->
-        subscribe_to_lobby()
+  defp dispatch_event(_context, :subscribe_to_lobby),
+    do: subscribe_to_lobby()
 
-      :subscribe_to_game ->
-        subscribe_to_game(game)
+  defp dispatch_event(_context, :new_game),
+    do: lobby_broadcast(:new_game)
 
-      :new_game ->
-        lobby_broadcast(event)
+  defp dispatch_event(
+         %GameContext{current_game: game},
+         :subscribe_to_game
+       ),
+       do: subscribe_to_game(game)
 
-      :new_player ->
-        game_broadcast(game, event, %{"new_player" => player_name})
+  defp dispatch_event(
+         %GameContext{current_game: game, current_user: player_name},
+         :new_player
+       ),
+       do: game_broadcast(game, :new_player, %{"new_player" => player_name})
 
-      :handshake ->
-        game_broadcast(game, event)
+  defp dispatch_event(
+         %GameContext{current_game: game},
+         :handshake
+       ),
+       do: game_broadcast(game, :handshake)
 
-      {:set_islands = message, params} ->
-        game_broadcast_from(game, message, params)
+  defp dispatch_event(
+         %GameContext{current_game: game},
+         {:set_islands, params}
+       ),
+       do: game_broadcast_from(game, :set_islands, params)
 
-      {:guessed_coordinates = message, params} ->
-        game_broadcast_from(game, message, params)
+  defp dispatch_event(
+         %GameContext{current_game: game},
+         {:guessed_coordinates, params}
+       ),
+       do: game_broadcast_from(game, :guessed_coordinates, params)
 
-      :game_over ->
-        game_broadcast(game, event)
+  defp dispatch_event(
+         %GameContext{current_game: game},
+         :game_over
+       ),
+       do: game_broadcast(game, :game_over)
 
-      event ->
-        IO.puts("Unknown event: #{inspect(event)}")
-    end
-  end
+  defp dispatch_event(_context, event),
+    do: IO.puts("Unknown event: #{inspect(event)}")
 
   defp subscribe_to_lobby do
     :ok = Phoenix.PubSub.subscribe(IslandsInterface.PubSub, "lobby")
