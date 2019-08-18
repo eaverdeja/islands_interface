@@ -23,7 +23,7 @@ defmodule IslandsInterface.LobbyHandlerTest do
         game_state: :pending
       }
 
-      events = [:subscribe_to_game, :broadcast_game_started]
+      events = [:subscribe_to_game, :new_game]
 
       assert {:ok, ^state, ^events} = LobbyHandler.handle_event(["new_game"], "", context)
     end
@@ -50,7 +50,7 @@ defmodule IslandsInterface.LobbyHandlerTest do
         player2: name
       }
 
-      events = [:subscribe_to_game, :broadcast_join]
+      events = [:subscribe_to_game, :new_player]
 
       assert {:ok, ^state, ^events} =
                LobbyHandler.handle_event(["join_game"], @game_name, context)
