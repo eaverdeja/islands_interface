@@ -3,7 +3,7 @@ defmodule IslandsInterfaceWeb.GameLiveView do
 
   alias IslandsEngine.GameSupervisor
   alias IslandsInterface.{GameContext, Screen}
-  alias IslandsInterfaceWeb.Presence
+  alias IslandsInterfaceWeb.{PresenceTracker}
   alias IslandsInterfaceWeb.Pubsub.Dispatcher
   alias Phoenix.Socket.Broadcast
 
@@ -14,49 +14,53 @@ defmodule IslandsInterfaceWeb.GameLiveView do
   def mount(%{"current_user" => %{email: email}, "_csrf_token" => csrf_token}, socket) do
     state_key = build_state_key(email)
 
-    context =
-      GameContext.new(%{
-        current_user: email,
-        csrf_token: csrf_token
-      })
+    initial_context = %{
+      current_user: email,
+      csrf_token: csrf_token
+    }
 
     state =
       with [] <- :ets.lookup(:interface_state, state_key) do
-        context = %{
-          context
-          | player_islands: Screen.init_player_islands(),
-            board: Screen.init_board(),
-            opponent_board: Screen.init_board()
-        }
-
-        Dispatcher.handle([:subscribe_to_lobby], context)
-
-        context
+        GameContext.new()
+        |> Map.merge(initial_context)
+        |> Map.merge(%{
+          player_islands: Screen.init_player_islands(),
+          board: Screen.init_board(),
+          opponent_board: Screen.init_board()
+        })
+        |> Dispatcher.handle([:subscribe_to_lobby])
       else
         [{^state_key, state}] ->
           context =
             state
             |> GameContext.new()
-            |> Map.merge(context)
+            |> Map.merge(initial_context)
 
-          case state.game_state do
-            :pending ->
-              Dispatcher.handle([:subscribe_to_lobby, :subscribe_to_game], context)
+          events =
+            case state.game_state do
+              :pending ->
+                [:subscribe_to_lobby, :subscribe_to_game]
 
-            nil ->
-              Dispatcher.handle([:subscribe_to_lobby], context)
+              nil ->
+                [:subscribe_to_lobby]
 
-            _ ->
-              Dispatcher.handle([:subscribe_to_game], context)
-          end
+              _ ->
+                IO.inspect(context)
+                [:subscribe_to_game]
+            end
 
-          context
+          Dispatcher.handle(context, events)
       end
       |> GameContext.to_enum()
 
     {:ok, _} = :timer.send_interval(3000, self(), :count_games)
 
     {:ok, assign(socket, state)}
+  end
+
+  def handle_info(%Broadcast{} = event, socket) do
+    context = GameContext.new(socket.assigns)
+    {:noreply, assign(socket, PresenceTracker.presence_diff(event, context))}
   end
 
   def handle_info(:count_games, socket) do
@@ -86,39 +90,22 @@ defmodule IslandsInterfaceWeb.GameLiveView do
   end
 
   def handle_info(:after_join_lobby, socket) do
-    {:ok, _} =
-      Presence.track(self(), "lobby", socket.assigns.current_user, %{
-        online_at: inspect(System.system_time(:second))
-      })
+    context = GameContext.new(socket.assigns)
+
+    :ok = PresenceTracker.track_lobby(context)
 
     {:noreply, assign(socket, :open_games, get_open_games())}
   end
 
-  def handle_info({:after_join_game, game, screen_name}, socket) do
-    {:ok, _} =
-      Presence.track(self(), get_topic(game), screen_name, %{
-        online_at: inspect(System.system_time(:second))
-      })
+  def handle_info(:after_join_game, socket) do
+    context = GameContext.new(socket.assigns)
 
-    state_key = build_state_key(screen_name)
+    :ok = PresenceTracker.track_game(context)
+
+    state_key = build_state_key(context.current_user)
     :ets.insert(:interface_state, {state_key, socket.assigns})
 
     {:noreply, socket}
-  end
-
-  def handle_info(%Broadcast{event: "presence_diff", topic: "lobby"}, socket) do
-    socket =
-      socket
-      |> assign(%{
-        online_users: Presence.list("lobby")
-      })
-      |> assign(:open_games, get_open_games())
-
-    {:noreply, socket}
-  end
-
-  def handle_info(%Broadcast{event: "presence_diff"}, socket) do
-    {:noreply, fetch(socket)}
   end
 
   def handle_info(:new_game, socket) do
@@ -127,7 +114,7 @@ defmodule IslandsInterfaceWeb.GameLiveView do
 
   def handle_info({:new_player, %{"new_player" => new_player}}, socket) do
     context = GameContext.new(socket.assigns)
-    Dispatcher.handle([:handshake], context)
+    _ = Dispatcher.handle(context, [:handshake])
 
     socket =
       socket
@@ -195,20 +182,8 @@ defmodule IslandsInterfaceWeb.GameLiveView do
     end
   end
 
-  defp fetch(socket) do
-    game = socket.assigns.current_game
-
-    if game do
-      assign(socket, %{
-        online_users: Presence.list(get_topic(game))
-      })
-    end
-  end
-
-  defp get_topic(name), do: "game:" <> name
-
   defp get_open_games do
-    Presence.list("lobby")
+    PresenceTracker.users_in_lobby()
     |> Map.keys()
     |> Enum.filter(fn user ->
       Enum.any?(GameSupervisor.children(), fn {_, pid, _, _} ->
@@ -218,15 +193,6 @@ defmodule IslandsInterfaceWeb.GameLiveView do
         end
       end)
     end)
-  end
-
-  defp broadcast_handshake(game) do
-    Phoenix.PubSub.broadcast_from!(
-      IslandsInterface.PubSub,
-      self(),
-      get_topic(game),
-      {:handshake, %{"game" => game}}
-    )
   end
 
   defp build_state_key(screen_name) do
