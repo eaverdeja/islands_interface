@@ -57,12 +57,13 @@ defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
     send(self(), :after_join_lobby)
   end
 
-  defp subscribe_to_game(game) do
+  defp subscribe_to_game(game) when is_binary(game) do
     :ok = Phoenix.PubSub.subscribe(IslandsInterface.PubSub, get_topic(game))
     send(self(), :after_join_game)
   end
 
-  defp game_broadcast(game, message, params \\ %{}) do
+  defp game_broadcast(game, message, params \\ %{})
+       when is_binary(game) and is_atom(message) do
     Phoenix.PubSub.broadcast!(
       IslandsInterface.PubSub,
       get_topic(game),
@@ -70,7 +71,8 @@ defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
     )
   end
 
-  defp game_broadcast_from(game, message, params) do
+  defp game_broadcast_from(game, message, params)
+       when is_binary(game) and is_atom(message) do
     Phoenix.PubSub.broadcast_from!(
       IslandsInterface.PubSub,
       self(),
@@ -79,7 +81,7 @@ defmodule IslandsInterfaceWeb.Pubsub.Dispatcher do
     )
   end
 
-  defp lobby_broadcast(message) do
+  defp lobby_broadcast(message) when is_atom(message) do
     Phoenix.PubSub.broadcast!(
       IslandsInterface.PubSub,
       "lobby",
