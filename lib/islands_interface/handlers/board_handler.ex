@@ -67,7 +67,7 @@ defmodule IslandsInterface.BoardHandler do
   end
 
   def handle_event(["guess_coordinate"], <<row, col>>, %GameContext{
-        player1: game,
+        current_game: game,
         current_player: current_player,
         opponent_board: opponent_board
       }) do
@@ -118,7 +118,7 @@ defmodule IslandsInterface.BoardHandler do
   end
 
   def handle_event(["debug_position_islands"], "", %GameContext{
-        player1: game,
+        current_game: game,
         current_player: current_player,
         player_islands: player_islands
       }) do
