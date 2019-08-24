@@ -1,5 +1,6 @@
 defmodule IslandsInterface.LobbyHandlerTest do
   use ExUnit.Case
+  import Mox
 
   alias IslandsInterface.{GameContext, LobbyHandler, GameEngineHelper}
   alias IslandsEngine.GameSupervisor
@@ -39,10 +40,19 @@ defmodule IslandsInterface.LobbyHandlerTest do
   end
 
   describe "joining games" do
+    setup do
+      IslandsInterface.GameMock
+      |> expect(:via_tuple, fn game -> {:via, Registry, {Registry.Game, game}} end)
+
+      :ok
+    end
+
     test "handles a new player joining an existing game", %{game_context: context} do
+      IslandsInterface.GameMock
+      |> expect(:add_player, fn _game, _name -> :ok end)
+
       name = "madmax@gmail.com"
       context = %{context | current_user: name}
-      {:ok, _pid} = GameSupervisor.start_game(@game_name)
 
       state = %{
         current_game: @game_name,
@@ -59,6 +69,9 @@ defmodule IslandsInterface.LobbyHandlerTest do
     test "returns an error if a player tries to join a non-existing game", %{
       game_context: context
     } do
+      IslandsInterface.GameMock
+      |> expect(:add_player, fn _game, _name -> exit(:shutdown) end)
+
       name = "madmax@gmail.com"
       context = %{context | current_user: name}
 

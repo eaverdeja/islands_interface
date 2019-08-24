@@ -17,3 +17,5 @@ config :islands_interface, IslandsInterfaceWeb.Endpoint,
 
 # Print only warnings and errors during test
 config :logger, level: :warn
+
+config :islands_interface, game_behaviour: IslandsInterface.GameMock

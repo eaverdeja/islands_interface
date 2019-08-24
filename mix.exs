@@ -46,7 +46,8 @@ defmodule IslandsInterface.MixProject do
       {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"},
       {:boundaries, github: "sasa1977/boundaries"},
       {:pow, "~> 1.0.11"},
-      {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
+      {:mox, "~> 0.5", only: :test}
     ]
   end
 end

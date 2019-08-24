@@ -1,7 +1,8 @@
 defmodule IslandsInterface.Screen do
-  alias IslandsEngine.{Coordinate, Game, Island}
+  alias IslandsEngine.{Coordinate, Island}
 
   @tile_types [:sea, :island, :forest, :miss]
+  def game_engine, do: Application.get_env(:islands_interface, :game_behaviour)
 
   def init_board do
     for row <- 1..10 do
@@ -46,7 +47,7 @@ defmodule IslandsInterface.Screen do
     try do
       game
       |> via()
-      |> Game.add_player(name)
+      |> game_engine().add_player(name)
 
       :ok
     catch
@@ -67,7 +68,7 @@ defmodule IslandsInterface.Screen do
   end
 
   def position_island(game, current_player, island, row, col) do
-    case Game.position_island(via(game), current_player, island, row, col) do
+    case game_engine().position_island(via(game), current_player, island, row, col) do
       {:ok, new_board} -> {:ok, update_board(new_board)}
       {:error, reason} -> {:error, reason}
       :error -> {:error, :error}
@@ -75,7 +76,7 @@ defmodule IslandsInterface.Screen do
   end
 
   def set_islands(game, player) do
-    case Game.set_islands(via(game), player) do
+    case game_engine().set_islands(via(game), player) do
       {:ok, new_board} -> {:ok, update_board(new_board)}
       {:error, reason} -> {:error, reason}
       :error -> {:error, :error}
@@ -83,7 +84,7 @@ defmodule IslandsInterface.Screen do
   end
 
   def guess_coordinate(game, current_player, row, col) do
-    case Game.guess_coordinate(via(game), current_player, row, col) do
+    case game_engine().guess_coordinate(via(game), current_player, row, col) do
       {:miss, :none, :no_win} -> {:ok, :miss}
       {:hit, forested, :no_win} -> {:ok, :hit, forested}
       {:hit, _forested, :win} -> {:ok, :hit, :win}
@@ -95,7 +96,7 @@ defmodule IslandsInterface.Screen do
     put_in(board[row][col], {tile_type, Coordinate.new(row, col)})
   end
 
-  defp via(game), do: Game.via_tuple(game)
+  defp via(game), do: game_engine().via_tuple(game)
 
   defp update_board(new_board) do
     Enum.reduce(new_board, init_board(), &update_coordinates(&1, &2))

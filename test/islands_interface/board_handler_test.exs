@@ -1,8 +1,9 @@
 defmodule IslandsInterface.BoardHandlerTest do
   use ExUnit.Case
+  import Mox
 
-  alias IslandsInterface.{GameContext, BoardHandler, GameEngineHelper}
-  alias IslandsEngine.{Coordinate, GameSupervisor}
+  alias IslandsInterface.{GameContext, BoardHandler}
+  alias IslandsEngine.{Coordinate}
 
   @game_name "eaverdeja@gmail.com"
   @player_islands %{
@@ -14,7 +15,8 @@ defmodule IslandsInterface.BoardHandlerTest do
   }
 
   setup do
-    on_exit(fn -> GameEngineHelper.shutdown_game() end)
+    IslandsInterface.GameMock
+    |> expect(:via_tuple, fn game -> {:via, Registry, {Registry.Game, game}} end)
 
     [game_context: GameContext.new(%{current_game: @game_name})]
   end
@@ -48,13 +50,19 @@ defmodule IslandsInterface.BoardHandlerTest do
           current_island: :dot
       }
 
-      {:ok, _pid} = GameSupervisor.start_game(@game_name)
-      GameEngineHelper.replace_state(@game_name, :players_set)
       row = 1
       col = 1
       coordinates = <<row, col>>
 
       player_islands = %{@player_islands | dot: %{@player_islands.dot | state: :positioned}}
+
+      IslandsInterface.GameMock
+      |> expect(:position_island, fn _game, _current_player, island_type, row, col ->
+        {:ok, coordinate} = IslandsEngine.Coordinate.new(row, col)
+        {:ok, island} = IslandsEngine.Island.new(island_type, coordinate)
+
+        {:ok, Map.put_new(%{}, island_type, island)}
+      end)
 
       assert {:ok, %{board: board, player_islands: ^player_islands, current_island: nil}} =
                BoardHandler.handle_event(["position_island"], coordinates, context)
@@ -75,10 +83,6 @@ defmodule IslandsInterface.BoardHandlerTest do
           current_island: :dot
       }
 
-      {:ok, _pid} = GameSupervisor.start_game(@game_name)
-      GameEngineHelper.replace_state(@game_name, :players_set)
-      island_positions = GameEngineHelper.position_all_islands()
-
       player_islands =
         @player_islands
         |> Enum.map(fn {name, island} ->
@@ -88,21 +92,49 @@ defmodule IslandsInterface.BoardHandlerTest do
 
       events = [set_islands: %{"player" => :player1}]
 
+      IslandsInterface.GameMock
+      |> expect(:set_islands, fn _game, _current_player -> {:ok, %{}} end)
+
       assert {:ok, %{board: board, player_islands: ^player_islands}, ^events} =
                BoardHandler.handle_event(["set_islands"], "", context)
+    end
+  end
 
-      Enum.each(island_positions, fn {type, {row, col}} ->
-        case type do
-          :s_shape ->
-            row = row + 1
-            tile = board[row][col]
-            assert ^tile = {:island, %Coordinate{row: row, col: col}}
+  describe "guessing coordinates" do
+    test "updates the board after hitting a coordinate", %{
+      game_context: context
+    } do
+      col = row = 1
+      opponent_board = %{1 => %{1 => %{}}}
 
-          _ ->
-            tile = board[row][col]
-            assert ^tile = {:island, %Coordinate{row: row, col: col}}
-        end
+      context = %{
+        context
+        | opponent_board: opponent_board
+      }
+
+      events = [
+        {:guessed_coordinates,
+         %{
+           "row" => row,
+           "col" => col
+         }}
+      ]
+
+      {:ok, coordinate} = IslandsEngine.Coordinate.new(row, col)
+
+      new_board =
+        opponent_board
+        |> put_in([row, col], {:forest, {:ok, coordinate}})
+
+      new_state = %{opponent_board: new_board}
+
+      IslandsInterface.GameMock
+      |> expect(:guess_coordinate, fn _game, _current_player, _row, _col ->
+        {:hit, opponent_board, :no_win}
       end)
+
+      assert {:ok, ^new_state, ^events} =
+               BoardHandler.handle_event(["guess_coordinate"], <<row, col>>, context)
     end
   end
 end
